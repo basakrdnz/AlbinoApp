@@ -3,6 +3,7 @@ import 'package:camera/camera.dart';
 import 'dart:io';
 
 void main() {
+  //this runs the code
   runApp(MyApp());
 }
 
