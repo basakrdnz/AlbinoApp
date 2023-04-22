@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:camera/camera.dart';
 import 'dart:io';
+import 'flutter_document_picker.dart' show File;
 
 void main() {
-  //this runs the code
   runApp(MyApp());
 }
 
@@ -170,6 +170,33 @@ class PhotoPreviewScreen extends StatelessWidget {
     );
   }
 }
+class FlutterDocumentPickerParams {
+  final List<String> allowedFileExtensions;
+  final List<String> allowedUtiTypes;
+  final List<String> allowedMimeTypes;
+  final List<String> invalidFileNameSymbols;
+
+  FlutterDocumentPickerParams({required this.allowedFileExtensions, required this.allowedUtiTypes, required this.allowedMimeTypes, required this.invalidFileNameSymbols});
+}
+class FlutterDocumentPicker extends StatelessWidget {
+  final FlutterDocumentPicker params;
+
+  const FlutterDocumentPicker({Key? key, required this.params, required List<String> allowedUtiTypes, required List<String> allowedFileExtensions, required List<String> allowedMimeTypes, required List<String> invalidFileNameSymbols}) : super(key: key);
+
+  @override
+  Widget build(BuildContext context) {
+    return ElevatedButton(
+      onPressed: () async {
+        final path = await FlutterDocumentPicker.openDocument(params: params);
+        print('Document path: $path');
+      },
+      child: Text('Pick a document'),
+    );
+  }
+
+  static openDocument({required FlutterDocumentPicker params}) {}
+}
+
 
 class DocumentsScreen extends StatelessWidget {
   @override
@@ -179,10 +206,26 @@ class DocumentsScreen extends StatelessWidget {
         title: Text('Documents'),
       ),
       body: Center(
-        child: Text('Documents Screen'),
+        child: ElevatedButton(
+          child: Text('Pick a document'),
+          onPressed: () async {
+            var params = FlutterDocumentPickerParams(
+              allowedFileExtensions: ['pdf', 'doc', 'docx'],
+              allowedUtiTypes: ['com.adobe.pdf', 'org.openxmlformats.wordprocessingml.document', 'com.microsoft.word.doc'],
+              allowedMimeTypes: ['application/pdf', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'],
+              invalidFileNameSymbols: ['/'],
+            );
+
+            final path = await FlutterDocumentPicker.openDocument(params: params);
+
+            print('Document path: $path');
+          },
+        ),
       ),
     );
   }
+
+  FlutterDocumentPickerParams({required List<String> allowedFileExtensions, required List<String> allowedUtiTypes, required List<String> allowedMimeTypes, required List<String> invalidFileNameSymbols}) {}
 }
 
 class GalleryScreen extends StatelessWidget {
