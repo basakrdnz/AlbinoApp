@@ -3,8 +3,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:camera/camera.dart';
 import 'package:flutter_document_picker/flutter_document_picker.dart';
-import 'package:image/image.dart'
-    as img; // 'image' paketini içe aktarma ifadesini ekledik
+import 'package:image/image.dart' as img;
 import 'package:permission_handler/permission_handler.dart';
 import 'package:image_gallery_saver/image_gallery_saver.dart' as img;
 import 'package:flutter_colorpicker/flutter_colorpicker.dart';
@@ -28,15 +27,20 @@ class HomeScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('Home'),
+        title: const Text('Home'),
       ),
       body: GridView.count(
         crossAxisCount: 2,
+        childAspectRatio: MediaQuery.of(context).size.aspectRatio,
         children: [
-          _buildGridItem(context, 'Kamera', Colors.red, CameraScreen()),
-          _buildGridItem(context, 'Belgeler', Colors.blue, DocumentsScreen()),
-          _buildGridItem(context, 'Galeri', Colors.green, GalleryScreen()),
-          _buildGridItem(context, 'Ayarlar', Colors.yellow, SettingsScreen()),
+          _buildGridItem(context, 'Kamera',
+              const Color.fromARGB(255, 235, 89, 16), CameraScreen()),
+          _buildGridItem(context, 'Belgeler',
+              const Color.fromARGB(255, 141, 57, 224), DocumentsScreen()),
+          _buildGridItem(context, 'Galeri',
+              const Color.fromARGB(255, 45, 243, 105), GalleryScreen()),
+          _buildGridItem(context, 'Ayarlar',
+              const Color.fromARGB(255, 52, 90, 224), SettingsScreen()),
         ],
       ),
     );
@@ -44,20 +48,30 @@ class HomeScreen extends StatelessWidget {
 
   Widget _buildGridItem(
       BuildContext context, String title, Color color, Widget screen) {
-    return InkWell(
+    return GestureDetector(
       onTap: () {
         Navigator.push(
             context, MaterialPageRoute(builder: (context) => screen));
       },
-      child: Card(
-        color: color,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        margin: EdgeInsets.all(16),
-        elevation: 8,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 100),
+        curve: Curves.easeInOut,
+        margin: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: color,
+          borderRadius: BorderRadius.circular(30),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.2),
+              blurRadius: 8,
+              offset: const Offset(0, 2),
+            ),
+          ],
+        ),
         child: Center(
           child: Text(
             title,
-            style: TextStyle(
+            style: const TextStyle(
               color: Colors.white,
               fontSize: 24,
               fontWeight: FontWeight.bold,
@@ -109,30 +123,24 @@ class _CameraScreenState extends State<CameraScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('Camera'),
+        title: const Text('Camera'),
       ),
       body: FutureBuilder<void>(
         future: _initializeControllerFuture,
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.done) {
-            // Kamera hazır ise önizlemeyi göster
             return CameraPreview(_controller);
           } else {
-            // Kamera hazır olana kadar yükleniyor göster
-            return Center(child: CircularProgressIndicator());
+            return const Center(child: CircularProgressIndicator());
           }
         },
       ),
       floatingActionButton: FloatingActionButton(
-        child: Icon(Icons.camera),
+        child: const Icon(Icons.camera),
         onPressed: () async {
           try {
             await _initializeControllerFuture;
-
-            // Fotoğraf çek ve sonucu al
             final XFile photo = await _controller.takePicture();
-
-            // Çekilen fotoğrafı başka bir sayfada göstermek için yeni sayfaya geçiş yap
             final result = await Navigator.push<bool>(
               context,
               MaterialPageRoute(
@@ -142,6 +150,11 @@ class _CameraScreenState extends State<CameraScreen> {
 
             if (result != null && !result) {
               await File(photo.path).delete();
+            } else {
+              Navigator.pushReplacement(
+                context,
+                MaterialPageRoute(builder: (context) => GalleryScreen()),
+              );
             }
           } catch (e) {
             print(e);
@@ -162,18 +175,18 @@ class PhotoPreviewScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('Photo Preview'),
+        title: const Text('Photo Preview'),
       ),
       body: Image.file(
         File(imagePath),
         fit: BoxFit.cover,
       ),
       floatingActionButton: FloatingActionButton(
-        child: Icon(Icons.save),
+        child: const Icon(Icons.save),
         onPressed: () async {
           await _saveImageToGallery(imagePath);
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
+            const SnackBar(
               content: Text('Fotoğraf galeriye kaydedildi.'),
             ),
           );
@@ -204,11 +217,11 @@ class DocumentsScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('Documents'),
+        title: const Text('Documents'),
       ),
       body: Center(
         child: ElevatedButton(
-          child: Text('Pick a document'),
+          child: const Text('Pick a document'),
           onPressed: () async {
             var params = FlutterDocumentPickerParams(
               allowedFileExtensions: ['pdf', 'doc', 'docx'],
@@ -240,9 +253,9 @@ class GalleryScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('Gallery'),
+        title: const Text('Gallery'),
       ),
-      body: Center(
+      body: const Center(
         child: Text('Gallery Screen'),
       ),
     );
@@ -262,7 +275,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('Settings'),
+        title: const Text('Settings'),
       ),
       body: Column(
         children: [
@@ -276,7 +289,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 context: context,
                 builder: (BuildContext context) {
                   return AlertDialog(
-                    title: Text('Yazı Boyutu'),
+                    title: const Text('Yazı Boyutu'),
                     content: Slider(
                       value: _fontSize,
                       min: 8,
@@ -289,7 +302,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     ),
                     actions: [
                       TextButton(
-                        child: Text('Tamam'),
+                        child: const Text('Tamam'),
                         onPressed: () {
                           Navigator.of(context).pop();
                         },
@@ -310,7 +323,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 context: context,
                 builder: (BuildContext context) {
                   return AlertDialog(
-                    title: Text('Yazı Rengi Seçin'),
+                    title: const Text('Yazı Rengi Seçin'),
                     content: SingleChildScrollView(
                       child: ColorPicker(
                         pickerColor: _textColor,
@@ -324,7 +337,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     ),
                     actions: [
                       TextButton(
-                        child: Text('Tamam'),
+                        child: const Text('Tamam'),
                         onPressed: () {
                           Navigator.of(context).pop();
                         },
