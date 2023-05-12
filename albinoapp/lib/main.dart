@@ -1,12 +1,27 @@
+// Dart ile çalışan async programları desteklemek için gerekli
 import 'dart:async';
+// Dosya I/O işlemlerini gerçekleştirmek için gerekli
 import 'dart:io';
+// Byte veri türünü kullanmak için gerekli
+import 'dart:typed_data';
+// Flutter ile ilgili temel widget ve material tasarımı için gerekli
 import 'package:flutter/material.dart';
+// Kamera özelliklerini kullanmak için gerekli
 import 'package:camera/camera.dart';
+// Belge seçimi işlemleri için gerekli
 import 'package:flutter_document_picker/flutter_document_picker.dart';
+// Resim işleme için gerekli (image_gallery_saver ile uyumlu olması için)
 import 'package:image/image.dart' as img;
+// Uygulama izinlerini yönetmek için gerekli
 import 'package:permission_handler/permission_handler.dart';
+// Resimleri galeriye kaydetmek için gerekli
 import 'package:image_gallery_saver/image_gallery_saver.dart' as img;
+// Renk seçici widget kullanmak için gerekli
 import 'package:flutter_colorpicker/flutter_colorpicker.dart';
+// Galeri görüntüleme ve yönetimi için gerekli
+import 'package:photo_manager/photo_manager.dart';
+// Key sınıfını ve diğer temel sınıfları kullanmak için gerekli
+import 'package:flutter/foundation.dart';
 
 void main() {
   //this runs the code
@@ -14,16 +29,19 @@ void main() {
 }
 
 class MyApp extends StatelessWidget {
+  const MyApp({Key? key}) : super(key: key);
+
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'My App',
-      home: HomeScreen(),
+      home: const HomeScreen(),
     );
   }
 }
 
 class HomeScreen extends StatelessWidget {
+  const HomeScreen({Key? key}) : super(key: key);
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -85,6 +103,8 @@ class HomeScreen extends StatelessWidget {
 }
 
 class CameraScreen extends StatefulWidget {
+  const CameraScreen({Key? key}) : super(key: key);
+
   @override
   _CameraScreenState createState() => _CameraScreenState();
 }
@@ -102,6 +122,12 @@ class _CameraScreenState extends State<CameraScreen> {
   }
 
   Future<void> _initializeCamera() async {
+    // Kameraya erişim izni iste
+    final cameraPermission = await Permission.camera.request();
+    if (!cameraPermission.isGranted) {
+      throw Exception('Kamera izni verilmedi.');
+    }
+
     // Kamera listesini al
     cameras = await availableCameras();
 
@@ -130,6 +156,7 @@ class _CameraScreenState extends State<CameraScreen> {
         future: _initializeControllerFuture,
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.done) {
+            // Kamera hazır ise önizlemeyi göster
             return CameraPreview(_controller);
           } else {
             return const Center(child: CircularProgressIndicator());
@@ -198,13 +225,15 @@ class PhotoPreviewScreen extends StatelessWidget {
   }
 
   Future<void> _saveImageToGallery(String imagePath) async {
-    final PermissionStatus permissionStatus = await Permission.photos.request();
+    final PermissionStatus permissionStatus =
+        await Permission.storage.request(); // Değiştirildi
 
     if (permissionStatus.isGranted) {
       final imageBytes = await File(imagePath).readAsBytes();
       final image = img.decodeImage(imageBytes);
-      final savedPath =
-          await img.ImageGallerySaver.saveImage(img.encodeJpg(image!));
+      // Convert the List<int> to Uint8List
+      Uint8List uint8ImageBytes = Uint8List.fromList(img.encodeJpg(image!));
+      final savedPath = await img.ImageGallerySaver.saveImage(uint8ImageBytes);
 
       print('Fotoğraf kaydedildi: $savedPath');
     } else {
@@ -214,6 +243,7 @@ class PhotoPreviewScreen extends StatelessWidget {
 }
 
 class DocumentsScreen extends StatelessWidget {
+  const DocumentsScreen({Key? key}) : super(key: key);
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -249,21 +279,100 @@ class DocumentsScreen extends StatelessWidget {
   }
 }
 
-class GalleryScreen extends StatelessWidget {
+class GalleryScreen extends StatefulWidget {
+  const GalleryScreen({Key? key}) : super(key: key);
+  @override
+  _GalleryScreenState createState() => _GalleryScreenState();
+}
+
+class _GalleryScreenState extends State<GalleryScreen> {
+  late Future<List<AssetEntity>> _assets;
+
+  @override
+  void initState() {
+    super.initState();
+    _assets = _fetchAssets();
+  }
+
+  Future<List<AssetEntity>> _fetchAssets() async {
+    // Request storage permission
+    final storagePermission = await Permission.storage.request();
+    if (!storagePermission.isGranted) {
+      throw Exception('Storage permission not granted.');
+    }
+
+    // Get gallery images
+    final List<AssetPathEntity> pathList = await PhotoManager.getAssetPathList(
+        onlyAll: true, type: RequestType.image);
+    final AssetPathEntity pathEntity = pathList.first;
+    final List<AssetEntity> assets =
+        await pathEntity.getAssetListPaged(0, pathEntity.assetCount);
+    return assets;
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Gallery'),
       ),
-      body: const Center(
-        child: Text('Gallery Screen'),
+      body: FutureBuilder<List<AssetEntity>>(
+        future: _assets,
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.done) {
+            if (snapshot.hasData) {
+              final assets = snapshot.data!;
+              return GridView.builder(
+                itemCount: assets.length,
+                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                  crossAxisCount: 3,
+                  crossAxisSpacing: 2,
+                  mainAxisSpacing: 2,
+                ),
+                itemBuilder: (BuildContext context, int index) {
+                  return AssetThumbnail(
+                      thumbData: assets[index].thumbDataWithSize(200, 200));
+                },
+              );
+            } else {
+              return const Center(child: Text('No images found.'));
+            }
+          } else {
+            return const Center(child: CircularProgressIndicator());
+          }
+        },
       ),
     );
   }
 }
 
+class AssetThumbnail extends StatelessWidget {
+  final Future<Uint8List?> thumbData;
+
+  const AssetThumbnail({Key? key, required this.thumbData}) : super(key: key);
+
+  @override
+  Widget build(BuildContext context) {
+    return FutureBuilder<Uint8List?>(
+      future: thumbData,
+      builder: (BuildContext context, AsyncSnapshot<Uint8List?> snapshot) {
+        if (snapshot.connectionState == ConnectionState.done) {
+          if (snapshot.data != null) {
+            return Image.memory(Uint8List.fromList(snapshot.data!),
+                fit: BoxFit.cover); // Updated this line
+          } else {
+            return const Center(child: Text('Error loading thumbnail.'));
+          }
+        } else {
+          return const Center(child: CircularProgressIndicator());
+        }
+      },
+    );
+  }
+}
+
 class SettingsScreen extends StatefulWidget {
+  const SettingsScreen({Key? key}) : super(key: key);
   @override
   _SettingsScreenState createState() => _SettingsScreenState();
 }
